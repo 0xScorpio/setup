@@ -1,15 +1,8 @@
-#####################################################################
-###                                                               ###
-### This config depends on NerdFonts to be used in your terminal, ###
-### else the glyphs will not render correctly!!!                  ###
-###                                                               ###
-#####################################################################
-
 # ~/.zshrc file for zsh interactive shells.
 # see /usr/share/doc/zsh/examples/zshrc for examples
 
 setopt autocd              # change directory just by typing its name
-setopt correct            # auto correct mistakes
+#setopt correct            # auto correct mistakes
 setopt interactivecomments # allow comments in interactive mode
 setopt magicequalsubst     # enable filename expansion for arguments of the form ‘anything=expression’
 setopt nonomatch           # hide error message if there is no match for the pattern
@@ -39,7 +32,18 @@ bindkey '^[[Z' undo                               # shift + tab undo last action
 autoload -Uz compinit
 compinit -d ~/.cache/zcompdump
 zstyle ':completion:*:*:*:*:*' menu select
-zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' # case insensitive tab completion
+zstyle ':completion:*' auto-description 'specify: %d'
+zstyle ':completion:*' completer _expand _complete
+zstyle ':completion:*' format 'Completing %d'
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*' list-colors ''
+zstyle ':completion:*' list-prompt %SAt %p: Hit TAB for more, or the character to insert%s
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+zstyle ':completion:*' rehash true
+zstyle ':completion:*' select-prompt %SScrolling active: current selection at %p%s
+zstyle ':completion:*' use-compctl false
+zstyle ':completion:*' verbose true
+zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
 
 # History configurations
 HISTFILE=~/.zsh_history
@@ -53,6 +57,9 @@ setopt hist_verify            # show command with history expansion to user befo
 
 # force zsh to show the complete history
 alias history="history 0"
+
+# configure `time` format
+TIMEFMT=$'\nreal\t%E\nuser\t%U\nsys\t%S\ncpu\t%P'
 
 # make less more friendly for non-text input files, see lesspipe(1)
 #[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
@@ -83,46 +90,37 @@ if [ -n "$force_color_prompt" ]; then
     fi
 fi
 
-# Getting IP addresses to add to prompt
+configure_prompt() {
+    prompt_symbol=㉿
+    [ "$EUID" -eq 0 ] && prompt_symbol=💀
+    case "$PROMPT_ALTERNATIVE" in
+        twoline)
+            PROMPT=$'\033[01;30m[`date  +"%d-%b-%y %T %Z"`]\e[0m\n%F{%(#.blue.green)}┌──${debian_chroot:+($debian_chroot)─}${VIRTUAL_ENV:+($(basename $VIRTUAL_ENV))─}(%B%F{%(#.red.blue)}%n$prompt_symbol%m%b%F{%(#.blue.green)})-[%B%F{reset}%(6~.%-1~/…/%4~.%5~)%b%F{%(#.blue.green)}]\n└─%B%(#.%F{red}#.%F{blue}$)%b%F{reset} '
+            RPROMPT=$'\033[01;30m[`date  +"%d-%b-%y %T %Z"`]\e[0m\n%(?.. %? %F{red}%B⨯%b%F{reset})%(1j. %j %F{yellow}%B⚙%b%F{reset}.)'
+            ;;
+        oneline)
+            PROMPT=$'\033[01;30m[`date  +"%d-%b-%y %T %Z"`]\e[0m\n${debian_chroot:+($debian_chroot)}${VIRTUAL_ENV:+($(basename $VIRTUAL_ENV))}%B%F{%(#.red.blue)}%n@%m%b%F{reset}:%B%F{%(#.blue.green)}%~%b%F{reset}%(#.#.$) '
+            RPROMPT=
+            ;;
+        backtrack)
+            PROMPT=$'\033[01;30m[`date  +"%d-%b-%y %T %Z"`]\e[0m\n${debian_chroot:+($debian_chroot)}${VIRTUAL_ENV:+($(basename $VIRTUAL_ENV))}%B%F{red}%n@%m%b%F{reset}:%B%F{blue}%~%b%F{reset}%(#.#.$) '
+            RPROMPT=
+            ;;
+    esac
+}
 
-IP1=$(ip -4 addr | grep -v 127.0.0.1 | grep -v secondary | grep eth0 | grep -Po "inet \K[\d.]+") # Get normal interface, may need to be changed
-IP2=$(ip -4 addr | grep -v 127.0.0.1 | grep -v secondary | grep tun0 | grep -Po "inet \K[\d.]+") # Get VPN IP if connected
-IP3=$(ip -4 addr | grep -v 127.0.0.1 | grep -v secondary | grep wlan0 | grep -Po "inet \K[\d.]+") # Get Wireless IP if connected
-
-# Create prompts based on which interfaces are found
-if [ $IP1 ]; then
-        LOCAL="%F{green}─@(%F{cyan}$IP1%F{green})"
-else
-        LOCAL=""
-fi
-
-if [ $IP2 ]; then
-        VPN="%F{green}─@(%F{yellow}$IP2%F{green})"
-else
-    VPN=""
-fi
-
-if [ $IP3 ]; then
-        WIFI="%F{green}─@(%F{red}$IP3%F{green})"
-else
-    WIFI=""
-fi
-
-
-DIR=$'%B%F{yellow}%(6~.%-1~/…/%4~.%5~)%b%F{green}'
-NAME=$'%F{blue} %F{magenta}(0xScorpio)'
+# The following block is surrounded by two delimiters.
+# These delimiters must not be modified. Thanks.
+# START KALI CONFIG VARIABLES
+PROMPT_ALTERNATIVE=twoline
+NEWLINE_BEFORE_PROMPT=yes
+# STOP KALI CONFIG VARIABLES
 
 if [ "$color_prompt" = yes ]; then
+    # override default virtualenv indicator in prompt
+    VIRTUAL_ENV_DISABLE_PROMPT=1
 
-        # Assemble the prompt in pieces for readability
-        LINE1=$'%F{green}┌──🮤'$NAME'%F{green}🮥'$LOCAL$VPN$WIFI
-        LINE2=$'\n├──🮤%B%F{yellow}%b  '$DIR'🮥'
-        LINE3=$'\n└─%F{blue}   '
-
-        TIME=$'%t'
-
-    PROMPT=$LINE1$LINE2$LINE3
-    RPROMPT=$'%F{green}[%F{reset}'$TIME'%(?.. %? %F{red}%B⨯%b%F{reset})%(1j. %j %F{yellow}%B⚙%b%F{reset}.)%F{green} ]'
+    configure_prompt
 
     # enable syntax-highlighting
     if [ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && [ "$color_prompt" = yes ]; then
@@ -133,10 +131,10 @@ if [ "$color_prompt" = yes ]; then
         ZSH_HIGHLIGHT_STYLES[reserved-word]=fg=cyan,bold
         ZSH_HIGHLIGHT_STYLES[suffix-alias]=fg=green,underline
         ZSH_HIGHLIGHT_STYLES[global-alias]=fg=magenta
-        ZSH_HIGHLIGHT_STYLES[precommand]=fg=magenta
+        ZSH_HIGHLIGHT_STYLES[precommand]=fg=green,underline
         ZSH_HIGHLIGHT_STYLES[commandseparator]=fg=blue,bold
         ZSH_HIGHLIGHT_STYLES[autodirectory]=fg=green,underline
-        ZSH_HIGHLIGHT_STYLES[path]=fg=yellow,underline
+        ZSH_HIGHLIGHT_STYLES[path]=underline
         ZSH_HIGHLIGHT_STYLES[path_pathseparator]=
         ZSH_HIGHLIGHT_STYLES[path_prefix_pathseparator]=
         ZSH_HIGHLIGHT_STYLES[globbing]=fg=blue,bold
@@ -145,8 +143,8 @@ if [ "$color_prompt" = yes ]; then
         ZSH_HIGHLIGHT_STYLES[command-substitution-delimiter]=fg=magenta
         ZSH_HIGHLIGHT_STYLES[process-substitution]=none
         ZSH_HIGHLIGHT_STYLES[process-substitution-delimiter]=fg=magenta
-        ZSH_HIGHLIGHT_STYLES[single-hyphen-option]=fg=blue
-        ZSH_HIGHLIGHT_STYLES[double-hyphen-option]=fg=blue
+        ZSH_HIGHLIGHT_STYLES[single-hyphen-option]=fg=magenta
+        ZSH_HIGHLIGHT_STYLES[double-hyphen-option]=fg=magenta
         ZSH_HIGHLIGHT_STYLES[back-quoted-argument]=none
         ZSH_HIGHLIGHT_STYLES[back-quoted-argument-delimiter]=fg=blue,bold
         ZSH_HIGHLIGHT_STYLES[single-quoted-argument]=fg=yellow
@@ -175,22 +173,33 @@ else
 fi
 unset color_prompt force_color_prompt
 
+toggle_oneline_prompt(){
+    if [ "$PROMPT_ALTERNATIVE" = oneline ]; then
+        PROMPT_ALTERNATIVE=twoline
+    else
+        PROMPT_ALTERNATIVE=oneline
+    fi
+    configure_prompt
+    zle reset-prompt
+}
+zle -N toggle_oneline_prompt
+bindkey ^P toggle_oneline_prompt
+
 # If this is an xterm set the title to user@host:dir
 case "$TERM" in
-xterm*|rxvt*)
-    TERM_TITLE=$'\e]0;${debian_chroot:+($debian_chroot)}%n@%m: %~\a'
+xterm*|rxvt*|Eterm|aterm|kterm|gnome*|alacritty)
+    TERM_TITLE=$'\e]0;${debian_chroot:+($debian_chroot)}${VIRTUAL_ENV:+($(basename $VIRTUAL_ENV))}%n@%m: %~\a'
     ;;
 *)
     ;;
 esac
 
-new_line_before_prompt=yes
 precmd() {
     # Print the previously configured title
     print -Pnr -- "$TERM_TITLE"
 
     # Print a new line before the prompt, but only if it is not the first line
-    if [ "$new_line_before_prompt" = yes ]; then
+    if [ "$NEWLINE_BEFORE_PROMPT" = yes ]; then
         if [ -z "$_NEW_LINE_BEFORE_PROMPT" ]; then
             _NEW_LINE_BEFORE_PROMPT=1
         else
@@ -222,10 +231,11 @@ if [ -x /usr/bin/dircolors ]; then
 
     # Take advantage of $LS_COLORS for completion as well
     zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+    zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;31'
 fi
 
-# Aliases
-alias ll='ls -la'
+# some more ls aliases
+alias ll='ls -l'
 alias la='ls -A'
 alias l='ls -CF'
 
@@ -236,8 +246,23 @@ if [ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
     ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=#999'
 fi
 
-# Created by `pipx` on 2023-12-22 00:53:22
-export PATH="$PATH:/home/scorpio/.local/bin"
+# enable command-not-found if installed
+if [ -f /etc/zsh_command_not_found ]; then
+    . /etc/zsh_command_not_found
+fi
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
 
-# alias for autorecon
-alias recon="sudo env "PATH=$PATH" autorecon"
+alias dockershell="sudo docker run --rm -i -t --entrypoint=/bin/bash"
+alias dockershellsh="sudo docker run --rm -i -t --entrypoint=/bin/sh"
+
+function dockershellhere() {
+            dirname=${PWD##*/}
+                sudo docker run --rm -it --entrypoint=/bin/bash -v `pwd`:/${dirname} -w /${dirname} "$@"
+        }
+function dockershellshhere() {
+            dirname=${PWD##*/}
+                sudo docker run --rm -it --entrypoint=/bin/sh -v `pwd`:/${dirname} -w /${dirname} "$@"
+        }
+
+
+/usr/bin/neofetch --color_blocks off

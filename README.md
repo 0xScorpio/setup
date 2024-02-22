@@ -21,3 +21,9 @@ pip3 install uro
 ```
 $ go install github.com/lc/gau/v2/cmd/gau@latest
 ```
+
+## Digital Forensics tools
+pdfinfo ->
+```
+sudo apt install poppler-utils
+```

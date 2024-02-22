@@ -27,3 +27,7 @@ pdfinfo ->
 ```
 sudo apt install poppler-utils
 ```
+exiftool ->
+```
+sudo apt install libimage-exiftool-perl
+```
